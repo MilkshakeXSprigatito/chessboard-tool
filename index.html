@@ -3,59 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專題棋盤 - 對角線提示版</title>
+    <title>專題棋盤 - 終極修復版</title>
     <style>
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             display: flex; flex-direction: column; align-items: center; 
-            background: #f0f2f5; margin: 0; padding: 20px 10px;
+            background: #f4f7f9; margin: 0; padding: 20px 10px;
             touch-action: manipulation;
         }
         .container { 
-            background: white; padding: 20px; border-radius: 16px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center;
+            background: white; padding: 25px; border-radius: 20px; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1); text-align: center;
             width: 100%; max-width: 95vw; box-sizing: border-box;
         }
-        .controls { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .controls { margin-bottom: 20px; display: flex; justify-content: center; gap: 12px; align-items: center; flex-wrap: wrap; }
         
+        /* 捲軸容器修復 */
         .board-wrapper {
             width: 100%;
-            max-height: 70vh;
+            max-height: 65vh;
             overflow: auto;
-            border: 2px solid #333;
-            background: #ccc;
-            margin-bottom: 20px;
+            border: 3px solid #444;
+            background: #bbb;
+            margin: 0 auto 20px auto;
+            display: block;
             -webkit-overflow-scrolling: touch;
         }
         
-        #board { display: grid; margin: 0 auto; gap: 0; }
+        #board { 
+            display: grid; 
+            margin: 0 auto; 
+            gap: 0; 
+            background: white;
+            /* 確保寬度由格子決定 */
+            width: max-content; 
+        }
         
         .cell { 
-            position: relative; display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; box-sizing: border-box; border: 0.1px solid rgba(0,0,0,0.05);
-            transition: background-color 0.2s;
+            position: relative; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer; 
+            box-sizing: border-box; 
+            border: 0.5px solid rgba(0,0,0,0.05);
+            /* 關鍵：強制正方形 */
+            aspect-ratio: 1 / 1; 
+            transition: background-color 0.15s;
         }
+        
         .white { background-color: #ffffff; }
-        .black { background-color: #d1d1d1; }
+        .black { background-color: #e0e0e0; }
         
-        /* 顏色優先權：紅格 > 黃色對角線 > 原色 */
-        .diagonal-highlight { background-color: #fff9c4 !important; } /* 淡黃色 */
-        .red { background-color: #ff4d4d !important; color: white !important; font-weight: bold; z-index: 2; }
+        /* 顏色：紅格 > 黃色 > 原色 */
+        .diagonal-highlight { background-color: #fff59d !important; } /* 飽和度稍高的淡黃 */
+        .red { background-color: #ff5252 !important; color: white !important; font-weight: bold; z-index: 5; }
         
-        .coord-text { pointer-events: none; user-select: none; z-index: 1; }
+        .coord-text { 
+            pointer-events: none; 
+            user-select: none; 
+            z-index: 1; 
+            font-family: monospace;
+        }
         
-        #f-display { font-weight: bold; color: #d32f2f; font-size: 2.5rem; }
-        input { width: 70px; padding: 8px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; text-align: center; }
-        button { padding: 8px 20px; background: #007bff; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .info { border-top: 2px solid #eee; padding-top: 20px; }
+        #f-display { font-weight: bold; color: #d32f2f; font-size: 2.8rem; }
+        .hint { font-size: 0.9rem; color: #666; margin-top: 10px; }
+        
+        input { width: 70px; padding: 10px; border-radius: 10px; border: 2px solid #ddd; text-align: center; font-size: 16px; }
+        button { 
+            padding: 10px 25px; background: #007bff; color: white; border: none; 
+            border-radius: 10px; font-weight: bold; cursor: pointer; transition: 0.2s;
+        }
+        button:hover { background: #0056b3; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>專題棋盤 (對角線提示)</h2>
+    <h2>專題棋盤 (對角線標示)</h2>
     <div class="controls">
         <label>邊長 n:</label>
-        <input type="number" id="nInput" value="15" min="2" max="100">
+        <input type="number" id="nInput" value="20" min="2" max="100">
         <button onclick="createBoard()">重新生成</button>
     </div>
     
@@ -65,7 +94,7 @@
 
     <div class="info">
         <div>最大無紅格正方形邊長 f = <span id="f-display">0</span></div>
-        <p style="font-size: 0.8rem; color: #888;">黃色區域：受紅格影響的對角線 (斜率 ±1)</p>
+        <p class="hint">🟡 黃色：不可放置區域 | 🔴 紅色：已放置點</p>
     </div>
 </div>
 
@@ -74,32 +103,31 @@
 
     function createBoard() {
         const nInput = document.getElementById('nInput');
-        let n = parseInt(nInput.value) || 15;
+        let n = parseInt(nInput.value) || 20;
         
-        if (n > 60) {
-            if (!confirm("n 較大時計算對角線可能稍慢，確定繼續？")) return;
-        }
-
         const board = document.getElementById('board');
         board.innerHTML = '';
         redSet.clear();
         
-        let cellSize = n > 30 ? 25 : 35;
+        // 根據 n 大小動態調整格子邊長 (不小於 20px 確保點擊準確)
+        let cellSize = n > 40 ? 25 : (n > 25 ? 30 : 40);
+        
         board.style.gridTemplateColumns = `repeat(${n}, ${cellSize}px)`;
-        board.style.gridTemplateRows = `repeat(${n}, ${cellSize}px)`;
 
         for (let r = 0; r < n; r++) {
             for (let c = 0; c < n; c++) {
                 const cell = document.createElement('div');
-                cell.style.width = `${cellSize}px`;
-                cell.style.height = `${cellSize}px`;
                 cell.className = `cell ${(r + c) % 2 === 0 ? 'white' : 'black'}`;
                 cell.id = `cell-${r}-${c}`;
+                // 套用動態尺寸
+                cell.style.width = `${cellSize}px`;
+                cell.style.height = `${cellSize}px`;
                 
-                if (cellSize >= 25) {
+                // 座標顯示 (n 太大時自動隱藏)
+                if (n <= 50) {
                     const span = document.createElement('span');
                     span.className = 'coord-text';
-                    span.style.fontSize = '9px';
+                    span.style.fontSize = n > 30 ? '7px' : '10px';
                     span.style.opacity = '0.4';
                     span.innerText = `${r},${c}`;
                     cell.appendChild(span);
@@ -118,11 +146,11 @@
         if (redSet.has(key)) {
             redSet.delete(key);
         } else {
-            // 檢查衝突
+            // 檢查斜率衝突
             for (let item of redSet) {
                 const [r2, c2] = item.split('-').map(Number);
                 if (Math.abs(r - r2) === Math.abs(c - c2)) {
-                    alert(`❌ 衝突：該位置已在紅格 (${r2}, ${c2}) 的對角線上`);
+                    alert(`❌ 衝突：該格位於 (${r2}, ${c2}) 的斜率 ±1 線上！`);
                     return;
                 }
             }
@@ -132,26 +160,28 @@
     }
 
     function updateVisuals(n) {
-        // 先重設所有格子的樣式
+        // 1. 清除所有狀態
         for (let r = 0; r < n; r++) {
             for (let c = 0; c < n; c++) {
                 const el = document.getElementById(`cell-${r}-${c}`);
-                el.classList.remove('red', 'diagonal-highlight');
+                if (el) el.classList.remove('red', 'diagonal-highlight');
             }
         }
 
-        // 重新繪製對角線與紅格
+        // 2. 標示紅格及其對角線
         redSet.forEach(key => {
             const [rr, cc] = key.split('-').map(Number);
             
-            // 標示對角線
+            // 標示斜率 +-1 區域
             for (let i = 0; i < n; i++) {
-                for (let j = 0; j < n; j++) {
-                    if (Math.abs(i - rr) === Math.abs(j - cc)) {
-                        document.getElementById(`cell-${i}-${j}`).classList.add('diagonal-highlight');
-                    }
-                }
+                // 對角線公式：j = i - (rr - cc) 或 j = -i + (rr + cc)
+                let j1 = i - (rr - cc);
+                let j2 = -i + (rr + cc);
+                
+                if (j1 >= 0 && j1 < n) document.getElementById(`cell-${i}-${j1}`).classList.add('diagonal-highlight');
+                if (j2 >= 0 && j2 < n) document.getElementById(`cell-${i}-${j2}`).classList.add('diagonal-highlight');
             }
+            
             // 標示紅格本人
             document.getElementById(`cell-${rr}-${cc}`).classList.add('red');
         });
