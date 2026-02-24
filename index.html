@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專題棋盤 - 高階大尺寸版</title>
+    <title>專題棋盤 - 對角線提示版</title>
     <style>
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -14,19 +14,18 @@
         .container { 
             background: white; padding: 20px; border-radius: 16px; 
             box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center;
-            width: 100%; max-width: 900px; box-sizing: border-box;
+            width: 100%; max-width: 95vw; box-sizing: border-box;
         }
         .controls { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; align-items: center; flex-wrap: wrap; }
         
-        /* 核心修正：加入捲軸容器 */
         .board-wrapper {
             width: 100%;
-            max-height: 70vh; /* 限制最大高度 */
-            overflow: auto;   /* 開啟捲軸 */
+            max-height: 70vh;
+            overflow: auto;
             border: 2px solid #333;
             background: #ccc;
             margin-bottom: 20px;
-            -webkit-overflow-scrolling: touch; /* 讓平板滑動更順暢 */
+            -webkit-overflow-scrolling: touch;
         }
         
         #board { display: grid; margin: 0 auto; gap: 0; }
@@ -34,13 +33,16 @@
         .cell { 
             position: relative; display: flex; align-items: center; justify-content: center; 
             cursor: pointer; box-sizing: border-box; border: 0.1px solid rgba(0,0,0,0.05);
-            -webkit-tap-highlight-color: transparent;
+            transition: background-color 0.2s;
         }
         .white { background-color: #ffffff; }
         .black { background-color: #d1d1d1; }
-        .red { background-color: #ff4d4d !important; color: white !important; font-weight: bold; }
         
-        .coord-text { pointer-events: none; user-select: none; }
+        /* 顏色優先權：紅格 > 黃色對角線 > 原色 */
+        .diagonal-highlight { background-color: #fff9c4 !important; } /* 淡黃色 */
+        .red { background-color: #ff4d4d !important; color: white !important; font-weight: bold; z-index: 2; }
+        
+        .coord-text { pointer-events: none; user-select: none; z-index: 1; }
         
         #f-display { font-weight: bold; color: #d32f2f; font-size: 2.5rem; }
         input { width: 70px; padding: 8px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; text-align: center; }
@@ -50,10 +52,10 @@
 <body>
 
 <div class="container">
-    <h2>專題大棋盤工具</h2>
+    <h2>專題棋盤 (對角線提示)</h2>
     <div class="controls">
-        <label>邊長 n (建議 ≤ 50):</label>
-        <input type="number" id="nInput" value="20" min="2" max="100">
+        <label>邊長 n:</label>
+        <input type="number" id="nInput" value="15" min="2" max="100">
         <button onclick="createBoard()">重新生成</button>
     </div>
     
@@ -63,7 +65,7 @@
 
     <div class="info">
         <div>最大無紅格正方形邊長 f = <span id="f-display">0</span></div>
-        <p style="font-size: 0.8rem; color: #888;">提示：棋盤過大時可滑動捲軸。點擊切換紅格。</p>
+        <p style="font-size: 0.8rem; color: #888;">黃色區域：受紅格影響的對角線 (斜率 ±1)</p>
     </div>
 </div>
 
@@ -72,21 +74,17 @@
 
     function createBoard() {
         const nInput = document.getElementById('nInput');
-        let n = parseInt(nInput.value) || 20;
+        let n = parseInt(nInput.value) || 15;
         
-        // 效能防護：若 n 太大提醒使用者
         if (n > 60) {
-            if (!confirm("n 超過 60 可能會導致低階裝置操作緩慢，確定要繼續嗎？")) return;
+            if (!confirm("n 較大時計算對角線可能稍慢，確定繼續？")) return;
         }
 
         const board = document.getElementById('board');
         board.innerHTML = '';
         redSet.clear();
         
-        // 設定固定格子大小，確保大尺寸下不會縮小到無法點擊
-        // 電腦版 40px, 大尺寸 n 時縮小到 30px
         let cellSize = n > 30 ? 25 : 35;
-        
         board.style.gridTemplateColumns = `repeat(${n}, ${cellSize}px)`;
         board.style.gridTemplateRows = `repeat(${n}, ${cellSize}px)`;
 
@@ -98,12 +96,11 @@
                 cell.className = `cell ${(r + c) % 2 === 0 ? 'white' : 'black'}`;
                 cell.id = `cell-${r}-${c}`;
                 
-                // 只有在格子夠大時才顯示座標文字
                 if (cellSize >= 25) {
                     const span = document.createElement('span');
                     span.className = 'coord-text';
-                    span.style.fontSize = n > 25 ? '8px' : '10px';
-                    span.style.opacity = n > 40 ? '0.3' : '0.6';
+                    span.style.fontSize = '9px';
+                    span.style.opacity = '0.4';
                     span.innerText = `${r},${c}`;
                     cell.appendChild(span);
                 }
@@ -113,32 +110,56 @@
                 board.appendChild(cell);
             }
         }
-        updateF(n);
+        updateVisuals(n);
     }
 
     function handleToggle(r, c, n) {
         const key = `${r}-${c}`;
-        const el = document.getElementById(key ? `cell-${r}-${c}` : '');
-        if (!el) return;
-
         if (redSet.has(key)) {
             redSet.delete(key);
-            el.classList.remove('red');
         } else {
+            // 檢查衝突
             for (let item of redSet) {
                 const [r2, c2] = item.split('-').map(Number);
                 if (Math.abs(r - r2) === Math.abs(c - c2)) {
-                    alert(`❌ 斜率衝突：(${r}, ${c}) 與 (${r2}, ${c2})`);
+                    alert(`❌ 衝突：該位置已在紅格 (${r2}, ${c2}) 的對角線上`);
                     return;
                 }
             }
             redSet.add(key);
-            el.classList.add('red');
         }
-        updateF(n);
+        updateVisuals(n);
     }
 
-    function updateF(n) {
+    function updateVisuals(n) {
+        // 先重設所有格子的樣式
+        for (let r = 0; r < n; r++) {
+            for (let c = 0; c < n; c++) {
+                const el = document.getElementById(`cell-${r}-${c}`);
+                el.classList.remove('red', 'diagonal-highlight');
+            }
+        }
+
+        // 重新繪製對角線與紅格
+        redSet.forEach(key => {
+            const [rr, cc] = key.split('-').map(Number);
+            
+            // 標示對角線
+            for (let i = 0; i < n; i++) {
+                for (let j = 0; j < n; j++) {
+                    if (Math.abs(i - rr) === Math.abs(j - cc)) {
+                        document.getElementById(`cell-${i}-${j}`).classList.add('diagonal-highlight');
+                    }
+                }
+            }
+            // 標示紅格本人
+            document.getElementById(`cell-${rr}-${cc}`).classList.add('red');
+        });
+
+        calculateF(n);
+    }
+
+    function calculateF(n) {
         let dp = Array.from({ length: n }, () => Array(n).fill(0));
         let maxF = 0;
         for (let r = 0; r < n; r++) {
