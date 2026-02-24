@@ -3,92 +3,67 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>專題棋盤 - 平板優化版</title>
+    <title>專題棋盤 - 高階大尺寸版</title>
     <style>
         body { 
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            background: #f0f2f5; 
-            margin: 0;
-            padding: 20px 10px;
-            touch-action: manipulation; /* 優化觸控反應 */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex; flex-direction: column; align-items: center; 
+            background: #f0f2f5; margin: 0; padding: 20px 10px;
+            touch-action: manipulation;
         }
         .container { 
-            background: white; 
-            padding: 20px; 
-            border-radius: 16px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
-            text-align: center;
-            width: 100%;
-            max-width: 600px;
-            box-sizing: border-box;
+            background: white; padding: 20px; border-radius: 16px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); text-align: center;
+            width: 100%; max-width: 900px; box-sizing: border-box;
         }
-        h2 { margin: 0 0 15px 0; color: #333; font-size: 1.5rem; }
+        .controls { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; align-items: center; flex-wrap: wrap; }
         
-        /* 控制區樣式 */
-        .controls { margin-bottom: 20px; display: flex; justify-content: center; gap: 10px; align-items: center; }
-        input { width: 60px; padding: 8px; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; text-align: center; }
-        button { 
-            padding: 8px 20px; 
-            background: #007bff; 
-            color: white; 
-            border: none; 
-            border-radius: 8px; 
-            font-size: 16px; 
-            font-weight: bold;
-            cursor: pointer; 
+        /* 核心修正：加入捲軸容器 */
+        .board-wrapper {
+            width: 100%;
+            max-height: 70vh; /* 限制最大高度 */
+            overflow: auto;   /* 開啟捲軸 */
+            border: 2px solid #333;
+            background: #ccc;
+            margin-bottom: 20px;
+            -webkit-overflow-scrolling: touch; /* 讓平板滑動更順暢 */
         }
-        button:active { background: #0056b3; transform: scale(0.98); }
-
-        /* 棋盤區域 */
-        #board { 
-            display: grid; 
-            border: 2px solid #333; 
-            margin: 0 auto 20px auto; 
-            background: #ccc; 
-            user-select: none;
-            -webkit-user-select: none;
-            gap: 0;
-        }
+        
+        #board { display: grid; margin: 0 auto; gap: 0; }
+        
         .cell { 
-            position: relative;
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            cursor: pointer;
-            box-sizing: border-box;
-            font-size: 10px; /* 座標文字大小 */
-            color: rgba(0,0,0,0.25);
-            -webkit-tap-highlight-color: transparent; /* 移除手機點擊藍框 */
+            position: relative; display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; box-sizing: border-box; border: 0.1px solid rgba(0,0,0,0.05);
+            -webkit-tap-highlight-color: transparent;
         }
         .white { background-color: #ffffff; }
         .black { background-color: #d1d1d1; }
-        .red { background-color: #ff4d4d !important; color: white !important; font-weight: bold; border: 1px solid #cc0000; }
+        .red { background-color: #ff4d4d !important; color: white !important; font-weight: bold; }
         
-        /* 資訊區 */
-        .info { border-top: 1px solid #eee; padding-top: 15px; }
-        #f-display { font-weight: bold; color: #d32f2f; font-size: 2.5rem; line-height: 1.2; }
-        .hint { font-size: 0.85rem; color: #888; margin-top: 5px; }
+        .coord-text { pointer-events: none; user-select: none; }
+        
+        #f-display { font-weight: bold; color: #d32f2f; font-size: 2.5rem; }
+        input { width: 70px; padding: 8px; font-size: 16px; border-radius: 8px; border: 1px solid #ccc; text-align: center; }
+        button { padding: 8px 20px; background: #007bff; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2>專題棋盤討論工具</h2>
+    <h2>專題大棋盤工具</h2>
     <div class="controls">
-        <label>邊長 n:</label>
-        <input type="number" id="nInput" value="8" min="2" max="25">
+        <label>邊長 n (建議 ≤ 50):</label>
+        <input type="number" id="nInput" value="20" min="2" max="100">
         <button onclick="createBoard()">重新生成</button>
     </div>
     
-    <div id="board"></div>
+    <div class="board-wrapper">
+        <div id="board"></div>
+    </div>
 
     <div class="info">
-        <div>最大無紅格正方形邊長</div>
-        <div>f = <span id="f-display">0</span></div>
-        <p class="hint">點擊格子切換顏色 | 顯示座標 (r, c)</p>
+        <div>最大無紅格正方形邊長 f = <span id="f-display">0</span></div>
+        <p style="font-size: 0.8rem; color: #888;">提示：棋盤過大時可滑動捲軸。點擊切換紅格。</p>
     </div>
 </div>
 
@@ -97,25 +72,23 @@
 
     function createBoard() {
         const nInput = document.getElementById('nInput');
-        let n = parseInt(nInput.value);
+        let n = parseInt(nInput.value) || 20;
         
-        // 防呆：限制 n 的範圍 (2~100)
-        if (!n || n < 2) n = 2;
-        if (n > 100) n = 100;
-        nInput.value = n;
+        // 效能防護：若 n 太大提醒使用者
+        if (n > 60) {
+            if (!confirm("n 超過 60 可能會導致低階裝置操作緩慢，確定要繼續嗎？")) return;
+        }
 
         const board = document.getElementById('board');
         board.innerHTML = '';
         redSet.clear();
         
-        // 1. 智慧計算格子大小：確保棋盤塞得進螢幕寬度
-        const containerWidth = document.querySelector('.container').clientWidth - 40; // 減去 padding
-        const cellSize = Math.floor(containerWidth / n);
+        // 設定固定格子大小，確保大尺寸下不會縮小到無法點擊
+        // 電腦版 40px, 大尺寸 n 時縮小到 30px
+        let cellSize = n > 30 ? 25 : 35;
         
-        // 2. 設定棋盤網格
         board.style.gridTemplateColumns = `repeat(${n}, ${cellSize}px)`;
-        // 關鍵修正：強制設定高度，避免棋盤扁掉
-        board.style.gridTemplateRows = `repeat(${n}, ${cellSize}px)`; 
+        board.style.gridTemplateRows = `repeat(${n}, ${cellSize}px)`;
 
         for (let r = 0; r < n; r++) {
             for (let c = 0; c < n; c++) {
@@ -124,14 +97,19 @@
                 cell.style.height = `${cellSize}px`;
                 cell.className = `cell ${(r + c) % 2 === 0 ? 'white' : 'black'}`;
                 cell.id = `cell-${r}-${c}`;
-                cell.innerText = `${r},${c}`; // 顯示 0-base 座標
                 
-                // 3. 統一用 click 事件，支援手機與滑鼠
+                // 只有在格子夠大時才顯示座標文字
+                if (cellSize >= 25) {
+                    const span = document.createElement('span');
+                    span.className = 'coord-text';
+                    span.style.fontSize = n > 25 ? '8px' : '10px';
+                    span.style.opacity = n > 40 ? '0.3' : '0.6';
+                    span.innerText = `${r},${c}`;
+                    cell.appendChild(span);
+                }
+                
                 cell.onclick = () => handleToggle(r, c, n);
-                
-                // 防止右鍵選單干擾
                 cell.oncontextmenu = (e) => e.preventDefault();
-                
                 board.appendChild(cell);
             }
         }
@@ -140,22 +118,20 @@
 
     function handleToggle(r, c, n) {
         const key = `${r}-${c}`;
-        const el = document.getElementById(`cell-${r}-${c}`);
+        const el = document.getElementById(key ? `cell-${r}-${c}` : '');
+        if (!el) return;
 
         if (redSet.has(key)) {
-            // 如果已經是紅色，就取消
             redSet.delete(key);
             el.classList.remove('red');
         } else {
-            // 如果是白色，先檢查斜率衝突
             for (let item of redSet) {
                 const [r2, c2] = item.split('-').map(Number);
                 if (Math.abs(r - r2) === Math.abs(c - c2)) {
-                    alert(`❌ 位置衝突！\n無法放置在 (${r}, ${c})\n因為與 (${r2}, ${c2}) 在同一對角線上。`);
+                    alert(`❌ 斜率衝突：(${r}, ${c}) 與 (${r2}, ${c2})`);
                     return;
                 }
             }
-            // 通過檢查，變紅色
             redSet.add(key);
             el.classList.add('red');
         }
@@ -182,15 +158,7 @@
         document.getElementById('f-display').innerText = maxF;
     }
 
-    // 確保畫面載入後自動產生棋盤
     window.onload = createBoard;
-    
-    // 當旋轉螢幕或改變視窗大小時，重新調整格子大小
-    let resizeTimer;
-    window.onresize = () => {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(createBoard, 100);
-    };
 </script>
 
 </body>
