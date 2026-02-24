@@ -99,9 +99,9 @@
         const nInput = document.getElementById('nInput');
         let n = parseInt(nInput.value);
         
-        // 防呆：限制 n 的範圍 (2~25)
+        // 防呆：限制 n 的範圍 (2~100)
         if (!n || n < 2) n = 2;
-        if (n > 25) n = 25;
+        if (n > 100) n = 100;
         nInput.value = n;
 
         const board = document.getElementById('board');
